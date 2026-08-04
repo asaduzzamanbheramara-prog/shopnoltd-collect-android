@@ -82,7 +82,7 @@ android {
     }
 
     defaultConfig {
-        applicationId('org.koboc.collect.android')
+        applicationId('org.shopnoltd.collect')
         minSdk libs.versions.minSdk.get().toInteger()
         targetSdkVersion libs.versions.targetSdk.get().toInteger()
         versionCode 4150
