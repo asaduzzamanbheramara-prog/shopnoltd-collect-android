@@ -1,5 +1,5 @@
 blank_issues_enabled: true
-contact_links: 
+contact_links:
   - name: "Report an issue"
     about: "For when Collect is behaving in an unexpected way"
     url: "https://forum.getodk.org/c/support/6"

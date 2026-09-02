@@ -63,12 +63,14 @@ dependencies {
 
     testImplementation(project(":test-shared"))
     testImplementation(project(":androidtest"))
+    testImplementation(project(":fragments-test"))
     testImplementation(libs.junit)
     testImplementation(libs.androidxTestExtJunit)
     testImplementation(libs.androidxTestEspressoCore)
     testImplementation(libs.robolectric)
     testImplementation(libs.mockitoKotlin)
     testImplementation(libs.androidxArchCoreTesting)
+    testImplementation(libs.androidxFragmentTesting)
 
     androidTestImplementation(libs.androidxTestExtJunit)
     androidTestImplementation(libs.junit)

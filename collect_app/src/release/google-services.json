@@ -1,37 +1,26 @@
 {
   "project_info": {
-    "project_number": "640412404956",
-    "firebase_url": "https://getodk-forks.firebaseio.com",
-    "project_id": "getodk-forks",
-    "storage_bucket": "getodk-forks.appspot.com"
+    "project_number": "993634596589",
+    "project_id": "shopnoltdcollect",
+    "storage_bucket": "shopnoltdcollect.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:640412404956:android:730483f389563845cb7819",
+        "mobilesdk_app_id": "1:993634596589:android:bd337879868bdb778b3ee4",
         "android_client_info": {
-          "package_name": "org.odk.collect.android"
+          "package_name": "org.shopnoltd.collect"
         }
       },
-      "oauth_client": [
-        {
-          "client_id": "640412404956-ag8do5nic02k70qr2k1a0mv3du8222hv.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
+      "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyA5tuKwVrlKEs-7iMSpdTmAy6qSH-w0lik"
+          "current_key": "AIzaSyAhxY-hPkmwP0ilm6DvArqtP-uvfQAVq_o"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "640412404956-ag8do5nic02k70qr2k1a0mv3du8222hv.apps.googleusercontent.com",
-              "client_type": 3
-            }
-          ]
+          "other_platform_oauth_client": []
         }
       }
     }
