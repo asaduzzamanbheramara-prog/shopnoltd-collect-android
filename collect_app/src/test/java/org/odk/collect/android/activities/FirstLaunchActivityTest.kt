@@ -71,7 +71,8 @@ class FirstLaunchActivityTest {
     fun `The ManualProjectCreatorDialog should be displayed after clicking on the 'Configure manually' button`() {
         val scenario = launcherRule.launch(FirstLaunchActivity::class.java)
         scenario.onActivity {
-            onView(withText(org.odk.collect.strings.R.string.configure_manually)).perform(click())
+            onView(withText(org.odk.collect.strings.R.string.configure_manually))
+                .perform(scrollTo(), click())
             assertThat(
                 it.supportFragmentManager.findFragmentByTag(ManualProjectCreatorDialog::class.java.name),
                 `is`(notNullValue())
