@@ -53,13 +53,26 @@ jobs:
             --max-workers=2 \
             --stacktrace
 
-      - name: Build release APK
+      # Always produce an installable, reproducible QA APK. The normal release
+      # variant may be unsigned when release signing secrets are not configured;
+      # selfSignedRelease is intentionally used for CI distribution/testing.
+      - name: Build installable QA APK
         run: |
-          ./gradlew :collect_app:assembleRelease \
+          ./gradlew :collect_app:assembleSelfSignedRelease \
             --no-daemon \
             -Dorg.gradle.vfs.watch=false \
             -Dorg.gradle.jvmargs="-Xmx4096m -XX:MaxMetaspaceSize=1024m" \
-            --max-workers=2
+            --max-workers=2 \
+            --stacktrace
+
+      - name: Verify APK output
+        run: |
+          set -euo pipefail
+          apk="$(find collect_app/build/outputs/apk -type f -name '*.apk' | head -n 1)"
+          test -n "$apk"
+          test -s "$apk"
+          echo "APK=$apk"
+          sha256sum "$apk" | tee collect_app/build/outputs/apk/ShopnoltdCollect-SHA256.txt
 
       - name: Upload test reports
         if: always()
@@ -72,11 +85,13 @@ jobs:
           if-no-files-found: ignore
           retention-days: 14
 
-      - name: Upload release APK
+      - name: Upload installable QA APK
         if: success()
         uses: actions/upload-artifact@v4
         with:
-          name: ShopnoltdCollect-release-apk
-          path: collect_app/build/outputs/apk/release/*.apk
+          name: ShopnoltdCollect-installable-qa-apk
+          path: |
+            collect_app/build/outputs/apk/selfSignedRelease/*.apk
+            collect_app/build/outputs/apk/ShopnoltdCollect-SHA256.txt
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 30
