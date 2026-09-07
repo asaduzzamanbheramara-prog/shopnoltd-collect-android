@@ -14,11 +14,13 @@ concurrency:
   group: shopnoltd-android-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  GRADLE_OPTS: -Dorg.gradle.vfs.watch=false -Dorg.gradle.jvmargs=-Xmx4096m\ -XX:MaxMetaspaceSize=1024m
+
 jobs:
   test-and-build:
     runs-on: ubuntu-24.04
     timeout-minutes: 90
-
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -45,34 +47,47 @@ jobs:
           ./gradlew --version
 
       - name: Run unit tests
-        run: |
-          ./gradlew test \
-            --no-daemon \
-            -Dorg.gradle.vfs.watch=false \
-            -Dorg.gradle.jvmargs="-Xmx4096m -XX:MaxMetaspaceSize=1024m" \
-            --max-workers=2 \
-            --stacktrace
+        run: ./gradlew test --no-daemon --max-workers=2 --stacktrace
 
-      # Always produce an installable, reproducible QA APK. The normal release
-      # variant may be unsigned when release signing secrets are not configured;
-      # selfSignedRelease is intentionally used for CI distribution/testing.
       - name: Build installable QA APK
-        run: |
-          ./gradlew :collect_app:assembleSelfSignedRelease \
-            --no-daemon \
-            -Dorg.gradle.vfs.watch=false \
-            -Dorg.gradle.jvmargs="-Xmx4096m -XX:MaxMetaspaceSize=1024m" \
-            --max-workers=2 \
-            --stacktrace
+        run: ./gradlew :collect_app:assembleSelfSignedRelease --no-daemon --max-workers=2 --stacktrace
 
-      - name: Verify APK output
+      - name: Verify QA APK
+        shell: bash
         run: |
           set -euo pipefail
           apk="$(find collect_app/build/outputs/apk -type f -name '*.apk' | head -n 1)"
           test -n "$apk"
           test -s "$apk"
-          echo "APK=$apk"
+          echo "APK_SIZE=$(stat -c%s "$apk")"
           sha256sum "$apk" | tee collect_app/build/outputs/apk/ShopnoltdCollect-SHA256.txt
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$apk"
+
+      - name: Build signed release when signing secrets are configured
+        if: ${{ secrets.RELEASE_STORE_BASE64 != '' && secrets.RELEASE_STORE_PASSWORD != '' && secrets.RELEASE_KEY_ALIAS != '' && secrets.RELEASE_KEY_PASSWORD != '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/shopnoltd-signing"
+          printf '%s' "${{ secrets.RELEASE_STORE_BASE64 }}" | base64 --decode > "$RUNNER_TEMP/shopnoltd-signing/release.jks"
+          cat > secrets.properties <<EOF
+          RELEASE_STORE_FILE=$RUNNER_TEMP/shopnoltd-signing/release.jks
+          RELEASE_STORE_PASSWORD=${{ secrets.RELEASE_STORE_PASSWORD }}
+          RELEASE_KEY_ALIAS=${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD=${{ secrets.RELEASE_KEY_PASSWORD }}
+          EOF
+          ./gradlew :collect_app:assembleRelease --no-daemon --max-workers=2 --stacktrace
+
+      - name: Verify signed release when available
+        if: ${{ secrets.RELEASE_STORE_BASE64 != '' && secrets.RELEASE_STORE_PASSWORD != '' && secrets.RELEASE_KEY_ALIAS != '' && secrets.RELEASE_KEY_PASSWORD != '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk="$(find collect_app/build/outputs/apk/release -type f -name '*.apk' | head -n 1)"
+          test -n "$apk"
+          test -s "$apk"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$apk"
+          sha256sum "$apk" | tee collect_app/build/outputs/apk/ShopnoltdCollect-release-SHA256.txt
 
       - name: Upload test reports
         if: always()
@@ -95,3 +110,14 @@ jobs:
             collect_app/build/outputs/apk/ShopnoltdCollect-SHA256.txt
           if-no-files-found: error
           retention-days: 30
+
+      - name: Upload signed release APK
+        if: ${{ success() && secrets.RELEASE_STORE_BASE64 != '' && secrets.RELEASE_STORE_PASSWORD != '' && secrets.RELEASE_KEY_ALIAS != '' && secrets.RELEASE_KEY_PASSWORD != '' }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: ShopnoltdCollect-signed-release-apk
+          path: |
+            collect_app/build/outputs/apk/release/*.apk
+            collect_app/build/outputs/apk/ShopnoltdCollect-release-SHA256.txt
+          if-no-files-found: error
+          retention-days: 90
