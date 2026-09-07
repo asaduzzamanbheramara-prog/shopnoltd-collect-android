@@ -14,9 +14,6 @@ concurrency:
   group: shopnoltd-android-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
-env:
-  GRADLE_OPTS: -Dorg.gradle.vfs.watch=false -Dorg.gradle.jvmargs=-Xmx4096m\ -XX:MaxMetaspaceSize=1024m
-
 jobs:
   test-and-build:
     runs-on: ubuntu-24.04
@@ -63,23 +60,45 @@ jobs:
           sha256sum "$apk" | tee collect_app/build/outputs/apk/ShopnoltdCollect-SHA256.txt
           "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$apk"
 
-      - name: Build signed release when signing secrets are configured
-        if: ${{ secrets.RELEASE_STORE_BASE64 != '' && secrets.RELEASE_STORE_PASSWORD != '' && secrets.RELEASE_KEY_ALIAS != '' && secrets.RELEASE_KEY_PASSWORD != '' }}
+      - name: Detect configured release signing
+        id: signing-check
         shell: bash
+        env:
+          RELEASE_STORE_BASE64: ${{ secrets.RELEASE_STORE_BASE64 }}
+          RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
         run: |
           set -euo pipefail
-          mkdir -p "$RUNNER_TEMP/shopnoltd-signing"
-          printf '%s' "${{ secrets.RELEASE_STORE_BASE64 }}" | base64 --decode > "$RUNNER_TEMP/shopnoltd-signing/release.jks"
-          cat > secrets.properties <<EOF
-          RELEASE_STORE_FILE=$RUNNER_TEMP/shopnoltd-signing/release.jks
-          RELEASE_STORE_PASSWORD=${{ secrets.RELEASE_STORE_PASSWORD }}
-          RELEASE_KEY_ALIAS=${{ secrets.RELEASE_KEY_ALIAS }}
-          RELEASE_KEY_PASSWORD=${{ secrets.RELEASE_KEY_PASSWORD }}
-          EOF
+          if [[ -n "$RELEASE_STORE_BASE64" && -n "$RELEASE_STORE_PASSWORD" && -n "$RELEASE_KEY_ALIAS" && -n "$RELEASE_KEY_PASSWORD" ]]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build signed release when signing secrets are configured
+        if: steps.signing-check.outputs.enabled == 'true'
+        shell: bash
+        env:
+          RELEASE_STORE_BASE64: ${{ secrets.RELEASE_STORE_BASE64 }}
+          RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          signing_dir="$RUNNER_TEMP/shopnoltd-signing"
+          mkdir -p "$signing_dir"
+          printf '%s' "$RELEASE_STORE_BASE64" | base64 --decode > "$signing_dir/release.jks"
+          {
+            printf 'RELEASE_STORE_FILE=%s\n' "$signing_dir/release.jks"
+            printf 'RELEASE_STORE_PASSWORD=%s\n' "$RELEASE_STORE_PASSWORD"
+            printf 'RELEASE_KEY_ALIAS=%s\n' "$RELEASE_KEY_ALIAS"
+            printf 'RELEASE_KEY_PASSWORD=%s\n' "$RELEASE_KEY_PASSWORD"
+          } > secrets.properties
           ./gradlew :collect_app:assembleRelease --no-daemon --max-workers=2 --stacktrace
 
       - name: Verify signed release when available
-        if: ${{ secrets.RELEASE_STORE_BASE64 != '' && secrets.RELEASE_STORE_PASSWORD != '' && secrets.RELEASE_KEY_ALIAS != '' && secrets.RELEASE_KEY_PASSWORD != '' }}
+        if: steps.signing-check.outputs.enabled == 'true'
         shell: bash
         run: |
           set -euo pipefail
@@ -112,7 +131,7 @@ jobs:
           retention-days: 30
 
       - name: Upload signed release APK
-        if: ${{ success() && secrets.RELEASE_STORE_BASE64 != '' && secrets.RELEASE_STORE_PASSWORD != '' && secrets.RELEASE_KEY_ALIAS != '' && secrets.RELEASE_KEY_PASSWORD != '' }}
+        if: success() && steps.signing-check.outputs.enabled == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: ShopnoltdCollect-signed-release-apk
@@ -121,3 +140,10 @@ jobs:
             collect_app/build/outputs/apk/ShopnoltdCollect-release-SHA256.txt
           if-no-files-found: error
           retention-days: 90
+
+      - name: Clean signing material
+        if: always()
+        shell: bash
+        run: |
+          rm -f secrets.properties
+          rm -rf "$RUNNER_TEMP/shopnoltd-signing"
