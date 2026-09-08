@@ -1,0 +1,35 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Each authenticated ShopnoltdCollect user owns exactly one profile
+    // document keyed by the Firebase Authentication UID.
+    match /users/{userId} {
+      allow create: if request.auth != null
+                    && request.auth.uid == userId
+                    && request.resource.data.uid == userId;
+
+      allow get, update, delete: if request.auth != null
+                                 && request.auth.uid == userId
+                                 && resource.data.uid == userId;
+
+      // The mobile client currently reads profiles by document ID, not by a
+      // collection query. Deny collection listing to avoid accidental account
+      // enumeration.
+      allow list: if false;
+    }
+
+    // User-owned device/application metadata may be added under the profile
+    // document without exposing another user's subtree.
+    match /users/{userId}/devices/{deviceId} {
+      allow read, write: if request.auth != null
+                         && request.auth.uid == userId;
+    }
+
+    // All other collections remain closed until a documented data model and
+    // least-privilege rule set is added.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
