@@ -83,7 +83,7 @@ the specific language governing permissions and limitations under the License.
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
         android:installLocation="auto"
-        android:label="@string/collect_app_name"
+        android:label="ShopnoltdCollect"
         android:largeHeap="true"
         android:networkSecurityConfig="@xml/network_security_config"
         android:supportsRtl="true"
