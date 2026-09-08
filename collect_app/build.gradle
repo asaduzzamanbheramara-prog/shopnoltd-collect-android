@@ -101,7 +101,6 @@ android {
                 keyPassword secrets.getProperty('RELEASE_KEY_PASSWORD')
             }
         }
-
         selfSignedRelease {
             storeFile file('../debug.keystore')
             storePassword 'android'
@@ -111,8 +110,6 @@ android {
     }
 
     buildTypes {
-
-        // Release build for all forks
         release {
             if (secrets.getProperty('RELEASE_STORE_FILE')) {
                 signingConfig signingConfigs.release
@@ -122,8 +119,6 @@ android {
             resValue("string", "GOOGLE_MAPS_API_KEY", googleMapsApiKey)
             resValue("string", "mapbox_access_token", mapboxAccessToken)
         }
-
-        // Release build for the official ODK Collect app
         odkCollectRelease {
             if (secrets.getProperty('RELEASE_STORE_FILE')) {
                 signingConfig signingConfigs.release
@@ -132,21 +127,16 @@ android {
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.txt'
             resValue("string", "GOOGLE_MAPS_API_KEY", googleMapsApiKey)
             resValue("string", "mapbox_access_token", mapboxAccessToken)
-
-            matchingFallbacks = ['release'] // So other modules use release build type for this
+            matchingFallbacks = ['release']
         }
-
         selfSignedRelease {
             signingConfig signingConfigs.selfSignedRelease
-
             minifyEnabled(true)
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.txt'
             resValue("string", "GOOGLE_MAPS_API_KEY", googleMapsApiKey)
             resValue("string", "mapbox_access_token", mapboxAccessToken)
-
-            matchingFallbacks = ['release'] // So other modules use release build type for this
+            matchingFallbacks = ['release']
         }
-
         debug {
             debuggable(true)
             resValue("string", "GOOGLE_MAPS_API_KEY", googleMapsApiKey)
@@ -168,17 +158,9 @@ android {
 
     packaging {
         resources {
-            // These library licenses will be referenced in-app
             excludes += ['META-INF/ASL-2.0.txt', 'META-INF/LGPL-3.0.txt']
-
-            // Pick first occurrence of any files that cause conflicts
             pickFirsts += ['META-INF/DEPENDENCIES', 'META-INF/LICENSE', 'META-INF/LICENSE.txt', 'META-INF/NOTICE', 'META-INF/NOTICE.txt', 'META-INF/services/com.fasterxml.jackson.core.JsonFactory', 'META-INF/services/com.fasterxml.jackson.core.ObjectCodec', 'META-INF/services/javax.ws.rs.ext.MessageBodyReader', 'META-INF/services/javax.ws.rs.ext.MessageBodyWriter', 'draftv4/schema', 'draftv3/schema']
         }
-
-        // To ensure that ODK Collect is installable on all devices, we don't use
-        // abiFilters to exclude any ABIs; but to keep the APK slim, we include
-        // the Mapbox native library only for 32-bit and 64-bit ARM devices and
-        // omit it for all X86 devices.
         if (!project.hasProperty("x86Libs")) {
             exclude 'lib/x86/libmapbox-maps.so'
             exclude 'lib/x86/libmapbox-common.so'
@@ -187,9 +169,6 @@ android {
             exclude 'lib/x86_64/libmapbox-common.so'
             exclude 'lib/x86_64/libc++_shared.so'
         }
-
-        /* Exclude large properties files used by BouncyCastle's Picnic implementation (which
-           Collect doesn't use). */
         exclude 'org/bouncycastle/pqc/crypto/picnic/lowmcL5.bin.properties'
         exclude 'org/bouncycastle/pqc/crypto/picnic/lowmcL3.bin.properties'
         exclude 'org/bouncycastle/pqc/crypto/picnic/lowmcL1.bin.properties'
@@ -200,19 +179,16 @@ android {
         sourceCompatibility JavaVersion.VERSION_17
         targetCompatibility JavaVersion.VERSION_17
     }
-
     testOptions {
         unitTests {
             includeAndroidResources = true
             returnDefaultValues = true
-
             all {
                 minHeapSize = '512m'
                 maxHeapSize = project.properties['test.heap.max']
             }
         }
     }
-
     lint {
         abortOnError true
         checkDependencies true
@@ -228,19 +204,14 @@ configurations.all {
     resolutionStrategy {
         cacheDynamicVersionsFor(0, 'seconds')
         cacheChangingModulesFor(0, 'seconds')
-
         force 'org.objenesis:objenesis:2.6'
-
-        // Newer Jackson versions cannot be ued until Collect minSDK >= 26 (https://github.com/FasterXML/jackson-databind#android)
         force 'com.fasterxml.jackson.core:jackson-databind:2.13.5'
     }
-    
     transitive = true
 }
 
 dependencies {
     coreLibraryDesugaring libs.desugar
-
     implementation project(':shared')
     implementation project(':androidshared')
     implementation project(':nbistubs')
@@ -259,9 +230,7 @@ dependencies {
     implementation project(':errors')
     implementation project(':upgrade')
     implementation project(':permissions')
-    implementation(project(':settings')) {
-        exclude group: 'joda-time'
-    }
+    implementation(project(':settings')) { exclude group: 'joda-time' }
     implementation project(':external-app')
     implementation project(':maps')
     implementation project(':osmdroid')
@@ -278,139 +247,90 @@ dependencies {
     implementation project(':db')
     implementation project(':open-rosa')
     implementation project(':mobile-device-management')
-
-    if (getSecrets().getProperty('MAPBOX_DOWNLOADS_TOKEN', '') != '') {
-        implementation project(':mapbox')
-    }
-
+    if (getSecrets().getProperty('MAPBOX_DOWNLOADS_TOKEN', '') != '') { implementation project(':mapbox') }
     implementation libs.androidxStartup
     implementation libs.androidxCoreKtx
     implementation libs.androidxBrowser
     implementation libs.androidxAppcompat
     implementation libs.androidxWorkRuntime
-
     implementation libs.androidxPreferenceKtx
     implementation libs.androidxFragmentKtx
-
     implementation libs.androidFlexbox
-
     implementation libs.playServicesMaps
     implementation libs.playServicesLocation
     implementation libs.playServicesOssLicenses
-
     implementation libs.firebaseAnalytics
     implementation libs.firebaseCrashlytics
-
     implementation libs.persianJodaTime
     implementation libs.myanmarCalendar
     implementation files('libs/bikram-sambat-1.8.0.jar')
     implementation libs.commonsIo
-    implementation (libs.opencsv) {
-        exclude group: 'commons-logging'
-    }
-    implementation(libs.javarosa) {
-        exclude group: 'commons-io'
-        exclude group: 'joda-time'
-        exclude group: 'org.slf4j'
-        exclude group: 'org.hamcrest', module: 'hamcrest-all'
-    }
+    implementation(libs.opencsv) { exclude group: 'commons-logging' }
+    implementation(libs.javarosa) { exclude group: 'commons-io'; exclude group: 'joda-time'; exclude group: 'org.slf4j'; exclude group: 'org.hamcrest', module: 'hamcrest-all' }
     implementation libs.gson
     implementation libs.timber
     implementation libs.slf4jApi
     implementation libs.slf4jTimber
-
     implementation libs.zxingAndroidEmbedded
-
     implementation libs.danlewAndroidJoda
-
     implementation(libs.jsoup)
-
-    // Android Architecture Components:
     implementation libs.androidxLifecycleRuntimeKtx
     implementation libs.androidxLifecycleLivedataKtx
     implementation libs.androidxViewpager2
-
-    // Dagger:
     implementation libs.dagger
     kapt libs.daggerCompiler
-
-    // Needed for injection into Robolectric tests
     testAnnotationProcessor libs.daggerCompiler
-
-    // Dagger Android:
     implementation libs.daggerAndroid
     annotationProcessor libs.daggerAndroidProcessor
-
     implementation libs.armen101AudioRecorderView
-
-    implementation(libs.mp4parserMuxer) {
-        exclude group: 'org.hamcrest'
-    }
-
+    implementation(libs.mp4parserMuxer) { exclude group: 'org.hamcrest' }
     implementation libs.splashscreen
     implementation libs.androidxNavigationFragmentKtx
-
     var composeBom = platform(libs.androidxComposeBom)
     implementation(composeBom)
     implementation(libs.androidXComposeMaterial)
     implementation(libs.androidXConstraintLayoutCompose)
-
     testImplementation project(':forms-test')
-
-    // Testing-only dependencies
     testImplementation libs.junit
     testImplementation libs.mockitoCore
     testImplementation libs.mockitoKotlin
-
     testImplementation project(':androidtest')
-    testImplementation(project(path: ':test-shared')) {
-        exclude group: 'org.robolectric' // Some tests in `collect_app` don't work with newer Robolectric
-    }
+    testImplementation(project(path: ':test-shared')) { exclude group: 'org.robolectric' }
     testImplementation(project(":shadows"))
     testImplementation(project(":test-forms"))
-
     testImplementation libs.robolectric
-
     testImplementation libs.androidxTestExtJunit
     testImplementation libs.androidxArchCoreTesting
-
     testImplementation libs.hamcrest
-
     testImplementation libs.androidxTestEspressoCore
     testImplementation libs.androidxTestEspressoIntents
     testImplementation libs.androidxTestCoreKtx
-
     androidTestImplementation project(':androidtest')
     androidTestImplementation project(':test-forms')
-
     androidTestImplementation libs.caverockAndroidsvg
     androidTestImplementation libs.mockitoAndroid
     androidTestImplementation libs.androidxTestExtJunit
     androidTestImplementation libs.androidxTestEspressoCore
     androidTestImplementation libs.androidxArchCoreTesting
     androidTestImplementation libs.androidxTestEspressoContrib
-    androidTestImplementation(libs.androidxTestEspressoIntents) {
-        exclude group: 'com.android.support', module: 'support-annotations'
-    }
-
+    androidTestImplementation(libs.androidxTestEspressoIntents) { exclude group: 'com.android.support', module: 'support-annotations' }
     androidTestImplementation libs.androidxWorkTesting
     androidTestImplementation libs.uiautomator
     androidTestImplementation libs.mockitoKotlin
-
     debugImplementation project(':fragments-test')
-    debugImplementation(project(':test-shared',)) {
-        exclude group: 'org.robolectric' // Some tests in `collect_app` don't work with newer Robolectric
-    }
-
-    // Real LeakCanary for debug and selfSigned builds only: notifications, analysis, etc
+    debugImplementation(project(':test-shared',)) { exclude group: 'org.robolectric' }
     debugImplementation libs.leakcanary
     selfSignedReleaseImplementation libs.leakcanary
 }
 
-// Must be at bottom to prevent dependency collisions
-// https://developers.google.com/android/guides/google-services-plugin
 apply plugin: 'com.google.gms.google-services'
-
-// Must be after google-services to prevent build failure
-// https://stackoverflow.com/a/67995305
 apply plugin: 'com.google.firebase.crashlytics'
+
+// The self-signed QA APK is intentionally independent of Firebase project configuration.
+// Production/official release variants still run the Google Services and Crashlytics tasks.
+tasks.configureEach { task ->
+    if (task.name.toLowerCase().contains('selfsignedrelease') &&
+        (task.name.toLowerCase().contains('googleservices') || task.name.toLowerCase().contains('crashlytics'))) {
+        task.enabled = false
+    }
+}
