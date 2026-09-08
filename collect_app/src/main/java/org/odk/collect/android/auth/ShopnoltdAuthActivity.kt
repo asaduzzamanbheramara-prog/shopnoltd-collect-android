@@ -7,9 +7,8 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.browser.customtabs.CustomTabsIntent
 import androidx.appcompat.app.AppCompatActivity
-import org.json.JSONObject
-import org.odk.collect.android.R
 import org.odk.collect.android.mainmenu.MainMenuActivity
+import org.json.JSONObject
 import java.security.MessageDigest
 import java.security.SecureRandom
 import java.util.Base64
@@ -29,7 +28,7 @@ class ShopnoltdAuthActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(TextView(this).apply {
-            text = getString(R.string.app_name)
+            text = "ShopnoltdCollect"
             textSize = 20f
             setPadding(48, 48, 48, 48)
         })
