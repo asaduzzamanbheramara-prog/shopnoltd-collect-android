@@ -43,8 +43,8 @@ jobs:
           java -version
           ./gradlew --version
 
-      - name: Run unit tests
-        run: ./gradlew test --no-daemon --max-workers=2 --stacktrace
+      - name: Run debug unit tests
+        run: ./gradlew testDebug --no-daemon --max-workers=2 --stacktrace
 
       - name: Build installable QA APK
         run: ./gradlew :collect_app:assembleSelfSignedRelease --no-daemon --max-workers=2 --stacktrace
