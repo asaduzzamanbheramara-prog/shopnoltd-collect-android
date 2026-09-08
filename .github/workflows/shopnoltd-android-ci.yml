@@ -43,10 +43,31 @@ jobs:
       - name: Make Gradle executable
         run: chmod +x ./gradlew
 
-      - name: Verify toolchain
+      - name: Verify toolchain and Firebase configuration
+        shell: bash
         run: |
+          set -euo pipefail
           java -version
           ./gradlew --version
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+
+          gradle = Path("collect_app/build.gradle").read_text(encoding="utf-8")
+          config = json.loads(Path("collect_app/google-services.json").read_text(encoding="utf-8"))
+
+          assert "applicationId('org.shopnoltd.collect')" in gradle, "ShopnoltdCollect applicationId missing"
+          assert config["project_info"]["project_id"] == "shopnoltdcollect", "Unexpected Firebase project"
+          clients = config.get("client", [])
+          assert any(
+              c.get("client_info", {}).get("android_client_info", {}).get("package_name") == "org.shopnoltd.collect"
+              for c in clients
+          ), "Firebase Android client does not match org.shopnoltd.collect"
+
+          print("Firebase project: shopnoltdcollect")
+          print("Firebase Android package: org.shopnoltd.collect")
+          print("ShopnoltdCollect applicationId: verified")
+          PY
 
       - name: Run unit tests
         run: ./gradlew test --no-daemon --max-workers=2 --stacktrace
