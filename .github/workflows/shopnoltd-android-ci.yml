@@ -1,0 +1,167 @@
+name: ShopnoltdCollect Android CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: shopnoltd-android-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-and-build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+          cache: gradle
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Accept Android licenses
+        run: yes | sdkmanager --licenses >/dev/null || true
+
+      - name: Make Gradle executable
+        run: chmod +x ./gradlew
+
+      - name: Verify toolchain
+        run: |
+          java -version
+          ./gradlew --version
+
+      - name: Run unit tests
+        run: ./gradlew test --no-daemon --max-workers=2 --stacktrace
+
+      - name: Build installable QA APK
+        run: ./gradlew :collect_app:assembleSelfSignedRelease --no-daemon --max-workers=2 --stacktrace
+
+      - name: Verify QA APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk="$(find collect_app/build/outputs/apk/selfSignedRelease -type f -name '*.apk' | head -n 1)"
+          test -n "$apk"
+          test -s "$apk"
+          echo "APK_SIZE=$(stat -c%s "$apk")"
+          sha256sum "$apk" | tee collect_app/build/outputs/apk/ShopnoltdCollect-SHA256.txt
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$apk"
+          cp "$apk" "$RUNNER_TEMP/ShopnoltdCollect.apk"
+
+      - name: Publish latest installable ShopnoltdCollect release
+        if: success() && github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="shopnoltdcollect-latest"
+          if ! gh release view "$tag" >/dev/null 2>&1; then
+            gh release create "$tag" \
+              --title "ShopnoltdCollect latest" \
+              --notes "Latest installable ShopnoltdCollect Android build. This channel is built with the CI self-signed QA key until official release-signing secrets are configured." \
+              --prerelease
+          fi
+          gh release upload "$tag" "$RUNNER_TEMP/ShopnoltdCollect.apk" --clobber
+          gh release upload "$tag" collect_app/build/outputs/apk/ShopnoltdCollect-SHA256.txt --clobber
+
+      - name: Detect configured release signing
+        id: signing-check
+        shell: bash
+        env:
+          RELEASE_STORE_BASE64: ${{ secrets.RELEASE_STORE_BASE64 }}
+          RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          if [[ -n "$RELEASE_STORE_BASE64" && -n "$RELEASE_STORE_PASSWORD" && -n "$RELEASE_KEY_ALIAS" && -n "$RELEASE_KEY_PASSWORD" ]]; then
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build signed release when signing secrets are configured
+        if: steps.signing-check.outputs.enabled == 'true'
+        shell: bash
+        env:
+          RELEASE_STORE_BASE64: ${{ secrets.RELEASE_STORE_BASE64 }}
+          RELEASE_STORE_PASSWORD: ${{ secrets.RELEASE_STORE_PASSWORD }}
+          RELEASE_KEY_ALIAS: ${{ secrets.RELEASE_KEY_ALIAS }}
+          RELEASE_KEY_PASSWORD: ${{ secrets.RELEASE_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          signing_dir="$RUNNER_TEMP/shopnoltd-signing"
+          mkdir -p "$signing_dir"
+          printf '%s' "$RELEASE_STORE_BASE64" | base64 --decode > "$signing_dir/release.jks"
+          {
+            printf 'RELEASE_STORE_FILE=%s\n' "$signing_dir/release.jks"
+            printf 'RELEASE_STORE_PASSWORD=%s\n' "$RELEASE_STORE_PASSWORD"
+            printf 'RELEASE_KEY_ALIAS=%s\n' "$RELEASE_KEY_ALIAS"
+            printf 'RELEASE_KEY_PASSWORD=%s\n' "$RELEASE_KEY_PASSWORD"
+          } > secrets.properties
+          ./gradlew :collect_app:assembleRelease --no-daemon --max-workers=2 --stacktrace
+
+      - name: Verify signed release when available
+        if: steps.signing-check.outputs.enabled == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          apk="$(find collect_app/build/outputs/apk/release -type f -name '*.apk' | head -n 1)"
+          test -n "$apk"
+          test -s "$apk"
+          "$ANDROID_HOME/build-tools/35.0.0/apksigner" verify --verbose "$apk"
+          sha256sum "$apk" | tee collect_app/build/outputs/apk/ShopnoltdCollect-release-SHA256.txt
+
+      - name: Upload test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: shopnoltd-android-test-reports
+          path: |
+            **/build/test-results/**
+            **/build/reports/tests/**
+          if-no-files-found: ignore
+          retention-days: 14
+
+      - name: Upload installable QA APK
+        if: success()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ShopnoltdCollect-installable-qa-apk
+          path: |
+            collect_app/build/outputs/apk/selfSignedRelease/*.apk
+            collect_app/build/outputs/apk/ShopnoltdCollect-SHA256.txt
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Upload signed release APK
+        if: success() && steps.signing-check.outputs.enabled == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ShopnoltdCollect-signed-release-apk
+          path: |
+            collect_app/build/outputs/apk/release/*.apk
+            collect_app/build/outputs/apk/ShopnoltdCollect-release-SHA256.txt
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Clean signing material
+        if: always()
+        shell: bash
+        run: |
+          rm -f secrets.properties
+          rm -rf "$RUNNER_TEMP/shopnoltd-signing"
