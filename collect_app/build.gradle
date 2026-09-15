@@ -220,8 +220,8 @@ android {
         checkDependencies true
         checkGeneratedSources true
         htmlReport true
-        lintConfig file("$rootDir/config/lint.xml")
         xmlReport true
+        lintConfig file("$rootDir/config/lint.xml")
     }
     namespace 'org.odk.collect.android'
 }
@@ -302,7 +302,6 @@ dependencies {
 
     implementation libs.firebaseAnalytics
     implementation libs.firebaseCrashlytics
-    implementation 'com.google.firebase:firebase-auth:24.2.0'
     implementation 'com.google.firebase:firebase-firestore:26.6.0'
 
     implementation libs.persianJodaTime
@@ -370,8 +369,8 @@ dependencies {
     testImplementation(project(path: ':test-shared')) {
         exclude group: 'org.robolectric' // Some tests in `collect_app` don't work with newer Robolectric
     }
-    testImplementation(project(":shadows"))
-    testImplementation(project(":test-forms"))
+    testImplementation project(":shadows")
+    testImplementation project(":test-forms")
 
     testImplementation libs.robolectric
 
