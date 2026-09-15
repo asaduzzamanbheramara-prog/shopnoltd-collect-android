@@ -219,7 +219,6 @@ android {
         abortOnError true
         checkDependencies true
         checkGeneratedSources true
-        checkGeneratedSources true
         htmlReport true
         xmlReport true
         lintConfig file("$rootDir/config/lint.xml")
