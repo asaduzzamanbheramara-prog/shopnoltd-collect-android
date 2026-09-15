@@ -71,6 +71,35 @@ jobs:
           print("ShopnoltdCollect applicationId: verified")
           PY
 
+      - name: Prefetch Robolectric SDK jars
+        shell: bash
+        run: |
+          set -euo pipefail
+          robolectric_dir="$RUNNER_TEMP/robolectric-preinstrumented"
+          mkdir -p "$robolectric_dir"
+
+          base_url="https://repo1.maven.org/maven2/org/robolectric/android-all-instrumented"
+          artifacts=(
+            "7.0.0_r1-robolectric-r1-i7"
+            "12.1-robolectric-8229987-i7"
+            "15-robolectric-12650502-i7"
+          )
+
+          for version in "${artifacts[@]}"; do
+            file="android-all-instrumented-${version}.jar"
+            url="${base_url}/${version}/${file}"
+            echo "Downloading ${file}"
+            curl --fail --location --retry 4 --retry-delay 2 --silent --show-error \
+              "$url" --output "$robolectric_dir/$file"
+            test -s "$robolectric_dir/$file"
+            jar tf "$robolectric_dir/$file" >/dev/null
+          done
+
+          echo "ROBOLECTRIC_OFFLINE=true" >> "$GITHUB_ENV"
+          echo "ROBOLECTRIC_DEPENDENCY_DIR=$robolectric_dir" >> "$GITHUB_ENV"
+          echo "Robolectric SDK jars provisioned in $robolectric_dir"
+          ls -lh "$robolectric_dir"
+
       - name: Run unit tests
         run: ./gradlew test --no-daemon --max-workers=2 --stacktrace
 
