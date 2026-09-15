@@ -73,6 +73,9 @@ def thousandMediaFileProjectUrl = secrets.getProperty('THOUSAND_MEDIA_FILE_PROJE
 def thousandMediaFileEntityListProjectUrl = secrets.getProperty('THOUSAND_MEDIA_FILE_ENTITY_LIST_PROJECT_URL', '')
 def shopnoltdApiBaseUrl = secrets.getProperty('SHOPNOLTD_API_BASE_URL', 'https://api.shopnoltd.dpdns.org')
 
+def robolectricOffline = System.getenv('ROBOLECTRIC_OFFLINE') ?: 'false'
+def robolectricDependencyDir = System.getenv('ROBOLECTRIC_DEPENDENCY_DIR')
+
 android {
     compileSdk libs.versions.compileSdk.get().toInteger()
 
@@ -113,8 +116,6 @@ android {
     }
 
     buildTypes {
-
-        // Release build for all forks
         release {
             if (secrets.getProperty('RELEASE_STORE_FILE')) {
                 signingConfig signingConfigs.release
@@ -125,7 +126,6 @@ android {
             resValue("string", "mapbox_access_token", mapboxAccessToken)
         }
 
-        // Release build for the official ODK Collect app
         odkCollectRelease {
             if (secrets.getProperty('RELEASE_STORE_FILE')) {
                 signingConfig signingConfigs.release
@@ -135,7 +135,7 @@ android {
             resValue("string", "GOOGLE_MAPS_API_KEY", googleMapsApiKey)
             resValue("string", "mapbox_access_token", mapboxAccessToken)
 
-            matchingFallbacks = ['release'] // So other modules use release build type for this
+            matchingFallbacks = ['release']
         }
 
         selfSignedRelease {
@@ -146,7 +146,7 @@ android {
             resValue("string", "GOOGLE_MAPS_API_KEY", googleMapsApiKey)
             resValue("string", "mapbox_access_token", mapboxAccessToken)
 
-            matchingFallbacks = ['release'] // So other modules use release build type for this
+            matchingFallbacks = ['release']
         }
 
         debug {
@@ -170,17 +170,10 @@ android {
 
     packaging {
         resources {
-            // These library licenses will be referenced in-app
             excludes += ['META-INF/ASL-2.0.txt', 'META-INF/LGPL-3.0.txt']
-
-            // Pick first occurrence of any files that cause conflicts
             pickFirsts += ['META-INF/DEPENDENCIES', 'META-INF/LICENSE', 'META-INF/LICENSE.txt', 'META-INF/NOTICE', 'META-INF/NOTICE.txt', 'META-INF/services/com.fasterxml.jackson.core.JsonFactory', 'META-INF/services/com.fasterxml.jackson.core.ObjectCodec', 'META-INF/services/javax.ws.rs.ext.MessageBodyReader', 'META-INF/services/javax.ws.rs.ext.MessageBodyWriter', 'draftv4/schema', 'draftv3/schema']
         }
 
-        // To ensure that ODK Collect is installable on all devices, we don't use
-        // abiFilters to exclude any ABIs; but to keep the APK slim, we include
-        // the Mapbox native library only for 32-bit and 64-bit ARM devices and
-        // omit it for all X86 devices.
         if (!project.hasProperty("x86Libs")) {
             exclude 'lib/x86/libmapbox-maps.so'
             exclude 'lib/x86/libmapbox-common.so'
@@ -190,8 +183,6 @@ android {
             exclude 'lib/x86_64/libc++_shared.so'
         }
 
-        /* Exclude large properties files used by BouncyCastle's Picnic implementation (which
-           Collect doesn't use). */
         exclude 'org/bouncycastle/pqc/crypto/picnic/lowmcL5.bin.properties'
         exclude 'org/bouncycastle/pqc/crypto/picnic/lowmcL3.bin.properties'
         exclude 'org/bouncycastle/pqc/crypto/picnic/lowmcL1.bin.properties'
@@ -222,6 +213,11 @@ android {
                     "--add-opens=java.desktop/java.awt.font=ALL-UNNAMED",
                     "--add-opens=jdk.compiler/com.sun.tools.javac.api=ALL-UNNAMED",
                 ]
+
+                systemProperty("robolectric.offline", robolectricOffline)
+                if (robolectricDependencyDir) {
+                    systemProperty("robolectric.dependency.dir", robolectricDependencyDir)
+                }
             }
         }
     }
@@ -243,8 +239,6 @@ configurations.all {
         cacheChangingModulesFor(0, 'seconds')
 
         force 'org.objenesis:objenesis:2.6'
-
-        // Newer Jackson versions cannot be ued until Collect minSDK >= 26 (https://github.com/FasterXML/jackson-databind#android)
         force 'com.fasterxml.jackson.core:jackson-databind:2.13.5'
     }
     
@@ -301,21 +295,16 @@ dependencies {
     implementation libs.androidxBrowser
     implementation libs.androidxAppcompat
     implementation libs.androidxWorkRuntime
-
     implementation libs.androidxPreferenceKtx
     implementation libs.androidxFragmentKtx
-
     implementation libs.androidFlexbox
-
     implementation libs.playServicesMaps
     implementation libs.playServicesLocation
     implementation libs.playServicesOssLicenses
-
     implementation libs.firebaseAnalytics
     implementation libs.firebaseCrashlytics
     implementation 'com.google.firebase:firebase-auth:22.2.0'
     implementation 'com.google.firebase:firebase-firestore:24.11.1'
-
     implementation libs.persianJodaTime
     implementation libs.myanmarCalendar
     implementation files('libs/bikram-sambat-1.8.0.jar')
@@ -333,35 +322,21 @@ dependencies {
     implementation libs.timber
     implementation libs.slf4jApi
     implementation libs.slf4jTimber
-
     implementation libs.zxingAndroidEmbedded
-
     implementation libs.danlewAndroidJoda
-
     implementation(libs.jsoup)
-
-    // Android Architecture Components:
     implementation libs.androidxLifecycleRuntimeKtx
     implementation libs.androidxLifecycleLivedataKtx
     implementation libs.androidxViewpager2
-
-    // Dagger:
     implementation libs.dagger
     kapt libs.daggerCompiler
-
-    // Needed for injection into Robolectric tests
     testAnnotationProcessor libs.daggerCompiler
-
-    // Dagger Android:
     implementation libs.daggerAndroid
     annotationProcessor libs.daggerAndroidProcessor
-
     implementation libs.armen101AudioRecorderView
-
     implementation(libs.mp4parserMuxer) {
         exclude group: 'org.hamcrest'
     }
-
     implementation libs.splashscreen
     implementation libs.androidxNavigationFragmentKtx
 
@@ -371,33 +346,24 @@ dependencies {
     implementation(libs.androidXConstraintLayoutCompose)
 
     testImplementation project(':forms-test')
-
-    // Testing-only dependencies
     testImplementation libs.junit
     testImplementation libs.mockitoCore
     testImplementation libs.mockitoKotlin
-
     testImplementation project(':androidtest')
     testImplementation(project(path: ':test-shared')) {
-        exclude group: 'org.robolectric' // Some tests in `collect_app` don't work with newer Robolectric
+        exclude group: 'org.robolectric'
     }
     testImplementation project(":shadows")
     testImplementation project(":test-forms")
-
     testImplementation libs.robolectric
-
     testImplementation libs.androidxTestExtJunit
     testImplementation libs.androidxArchCoreTesting
-
     testImplementation libs.hamcrest
-
     testImplementation libs.androidxTestEspressoCore
     testImplementation libs.androidxTestEspressoIntents
     testImplementation libs.androidxTestCoreKtx
-
     androidTestImplementation project(':androidtest')
     androidTestImplementation project(':test-forms')
-
     androidTestImplementation libs.caverockAndroidsvg
     androidTestImplementation libs.mockitoAndroid
     androidTestImplementation libs.androidxTestExtJunit
@@ -407,25 +373,16 @@ dependencies {
     androidTestImplementation(libs.androidxTestEspressoIntents) {
         exclude group: 'com.android.support', module: 'support-annotations'
     }
-
     androidTestImplementation libs.androidxWorkTesting
     androidTestImplementation libs.uiautomator
     androidTestImplementation libs.mockitoKotlin
-
     debugImplementation project(':fragments-test')
     debugImplementation(project(':test-shared',)) {
-        exclude group: 'org.robolectric' // Some tests in `collect_app` don't work with newer Robolectric
+        exclude group: 'org.robolectric'
     }
-
-    // Real LeakCanary for debug and selfSigned builds only: notifications, analysis, etc
     debugImplementation libs.leakcanary
     selfSignedReleaseImplementation libs.leakcanary
 }
 
-// Must be at bottom to prevent dependency collisions
-// https://developers.google.com/android/guides/google-services-plugin
 apply plugin: 'com.google.gms.google-services'
-
-// Must be after google-services to prevent build failure
-// https://stackoverflow.com/a/67995305
 apply plugin: 'com.google.firebase.crashlytics'
