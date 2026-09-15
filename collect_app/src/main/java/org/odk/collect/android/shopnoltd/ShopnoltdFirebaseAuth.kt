@@ -1,4 +1,4 @@
-package org.shopnoltd.collect.shopnoltd
+package org.odk.collect.android.shopnoltd
 
 import android.app.Activity
 import com.google.android.gms.tasks.Task
