@@ -219,6 +219,7 @@ android {
         abortOnError true
         checkDependencies true
         checkGeneratedSources true
+        checkGeneratedSources true
         htmlReport true
         xmlReport true
         lintConfig file("$rootDir/config/lint.xml")
@@ -302,6 +303,7 @@ dependencies {
 
     implementation libs.firebaseAnalytics
     implementation libs.firebaseCrashlytics
+    implementation 'com.google.firebase:firebase-auth:22.2.0'
     implementation 'com.google.firebase:firebase-firestore:26.6.0'
 
     implementation libs.persianJodaTime
