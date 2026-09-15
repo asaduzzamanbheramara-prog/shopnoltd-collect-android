@@ -1,8 +1,9 @@
-package org.odk.collect.android.shopnoltd
+package org.shopnoltd.collect.shopnoltd
 
 import android.app.Activity
 import com.google.android.gms.tasks.Task
 import com.google.android.gms.tasks.Tasks
+import com.google.firebase.FirebaseException
 import com.google.firebase.auth.AuthResult
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
@@ -88,7 +89,7 @@ object ShopnoltdFirebaseAuth {
                     callbacks.onVerificationCompleted(credential)
                 }
 
-                override fun onVerificationFailed(exception: Exception) {
+                override fun onVerificationFailed(exception: FirebaseException) {
                     callbacks.onVerificationFailed(exception)
                 }
 
