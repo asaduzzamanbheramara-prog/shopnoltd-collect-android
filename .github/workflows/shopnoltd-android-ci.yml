@@ -80,8 +80,10 @@ jobs:
 
           base_url="https://repo1.maven.org/maven2/org/robolectric/android-all-instrumented"
           artifacts=(
+            "6.0.1_r3-robolectric-r1-i7"
             "7.0.0_r1-robolectric-r1-i7"
             "12.1-robolectric-8229987-i7"
+            "13-robolectric-9030017-i7"
             "15-robolectric-12650502-i7"
           )
 
