@@ -99,6 +99,7 @@ mockitoAndroid = { group = "org.mockito", name = "mockito-android", version = "5
 mockitoCore = { group = "org.mockito", name = "mockito-core", version = "5.18.0" }
 mockitoKotlin = { group = "org.mockito.kotlin", name = "mockito-kotlin", version = "5.4.0" }
 androidxFragmentTesting = { group = "androidx.fragment", name = "fragment-testing", version.ref = "androidxFragment" }
+androidxFragmentTestingManifest = { group = "androidx.fragment", name = "fragment-testing-manifest", version.ref = "androidxFragment" }
 androidxArchCoreTesting = { group = "androidx.arch.core", name = "core-testing", version = "2.2.0" }
 androidxWorkTesting = { group = "androidx.work", name = "work-testing", version.ref = "work" }
 androidxTestCoreKtx = { group = "androidx.test", name = "core-ktx", version = "1.6.1" }
