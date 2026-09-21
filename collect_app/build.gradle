@@ -376,7 +376,7 @@ dependencies {
     androidTestImplementation libs.androidxWorkTesting
     androidTestImplementation libs.uiautomator
     androidTestImplementation libs.mockitoKotlin
-    debugImplementation project(':fragments-test')
+    testImplementation project(':fragments-test')
     debugImplementation(project(':test-shared',)) {
         exclude group: 'org.robolectric'
     }
