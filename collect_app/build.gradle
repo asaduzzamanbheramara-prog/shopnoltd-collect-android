@@ -300,6 +300,7 @@ dependencies {
     testImplementation(project(":test-forms"))
     testImplementation libs.robolectric
     testImplementation libs.androidxTestExtJunit
+    testImplementation libs.androidxFragmentTestingManifest
     testImplementation libs.androidxArchCoreTesting
     testImplementation libs.hamcrest
     testImplementation libs.androidxTestEspressoCore
