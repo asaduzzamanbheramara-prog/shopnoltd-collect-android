@@ -55,7 +55,7 @@ dependencies {
     implementation(libs.dagger)
     kapt(libs.daggerCompiler)
 
-    debugImplementation(project(":fragments-test"))
+    testImplementation(project(":fragments-test"))
 
     testImplementation(libs.androidxTestExtJunit)
     testImplementation(libs.mockitoKotlin)
